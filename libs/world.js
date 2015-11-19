@@ -7,20 +7,22 @@ CAR.world = function(scene)
 	var textureLoader = new THREE.TextureLoader();
     //Lights
     var hemLight = new THREE.HemisphereLight(0xFFFFFF, 0xFF0000, 0.6);
-    hemLight.castShadow = true;
-	scene.add(hemLight);
+    //hemLight.castShadow = true;
+	//scene.add(hemLight);
 	
 	
 	var dirLight = new THREE.DirectionalLight(0xFFFFFF, 1);
 	dirLight.shadowCameraNear = 1;
-	dirLight.shadowCameraFar = 50;
-	dirLight.shadowCameraTop = 15;
-	dirLight.shadowCameraBottom = -15;
-	dirLight.shadowCameraLeft = -15;
-	dirLight.shadowCameraRight = 15;
+	dirLight.shadowCameraFar = 150;
+	dirLight.shadowCameraTop = 100;
+	dirLight.shadowCameraBottom = -100;
+	dirLight.shadowCameraLeft = -100;
+	dirLight.shadowCameraRight = 100;
 	dirLight.castShadow = true;
-	dirLight.shadowMapWidth = 2048;
-	dirLight.shadowMapHeight = 2048;
+	dirLight.shadowMapWidth = 4096;
+	dirLight.shadowMapHeight = 4096;
+	var helper = new THREE.CameraHelper(dirLight.shadow.camera);
+	scene.add(helper);
 	scene.add(dirLight);
 	
 	//Grass
@@ -74,8 +76,8 @@ CAR.world = function(scene)
 	var materialC = new THREE.MeshBasicMaterial({ color:0x0019BF });
 	var cyl1 = new THREE.Mesh(cyl, materialC);
 	var cyl2 = new THREE.Mesh(cyl, materialC);
-	//cyl1.castShadow = true;
-	//cyl2.castShadow = true;
+	cyl1.castShadow = true;
+	cyl2.castShadow = true;
 	
 	var torTex = textureLoader.load("res/test.jpg");
 	var torGeo = new THREE.TorusGeometry(15, 2, 10, 50);
@@ -84,11 +86,11 @@ CAR.world = function(scene)
 	
 	var tor1 = new THREE.Mesh(torGeo, torMat);
 	tor1.position.set(0,0,0);
-	//tor1.castShadow = true;
+	tor1.castShadow = true;
 	
-	//scene.add(tor1);
-	//scene.add(cyl1);
-	//scene.add(cyl2);
+	scene.add(tor1);
+	scene.add(cyl1);
+	scene.add(cyl2);
 	
 	var boxGeo = new THREE.BoxGeometry(5,5,5);
 	var box = new THREE.Mesh(boxGeo, materialC);

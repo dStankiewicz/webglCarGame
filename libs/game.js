@@ -73,7 +73,7 @@ var startGame = function()
 		// Camera position handling, including speed-dependent effects
 		camera.rotation.y = car.cameraAngleY + Math.PI;
 		camera.position.x = car.position.x - 10 * Math.sin(camera.rotation.y);
-		camera.position.z = car.position.z - 10 * Math.cos(camera.rotation.y);
+		camera.position.z = car.position.z - 10 * Math.cos(camera.rotation.y);// + car.carAcc;
 		camera.lookAt(car.position);
 		
 		renderer.render(scene, camera);
