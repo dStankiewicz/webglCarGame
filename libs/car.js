@@ -234,13 +234,17 @@ CAR.car.prototype.move = function(keys, camera, dt)
 	this.dae.position.x = this.position.x -= Math.sin(this.rotation.y) * this.carSpeed * dt;
 	this.dae.position.z = this.position.z -= Math.cos(this.rotation.y) * this.carSpeed * dt;
 	this.fwRotationMatrix.y = this.cameraAngleY - this.rotation.y;
-	this.fwRotationMatrix.x -= Math.PI*dt;
+	this.fwRotationMatrix.x -= (dt * this.carSpeed) / (2.0*Math.PI*this.wheelRadius);
 	this.objects["flWheel"].rotation.set(0,0,0);
 	this.objects["frWheel"].rotation.set(0,0,0);
+	this.objects["rlWheel"].rotation.set(0,0,0);
+	this.objects["rrWheel"].rotation.set(0,0,0);
 	this.objects["flWheel"].rotateOnAxis(new THREE.Vector3(0,1,0), this.fwRotationMatrix.y);
 	this.objects["flWheel"].rotateOnAxis(new THREE.Vector3(1,0,0), this.fwRotationMatrix.x);
 	this.objects["frWheel"].rotateOnAxis(new THREE.Vector3(0,1,0), this.fwRotationMatrix.y);
 	this.objects["frWheel"].rotateOnAxis(new THREE.Vector3(1,0,0), this.fwRotationMatrix.x);
+	this.objects["rlWheel"].rotateOnAxis(new THREE.Vector3(1,0,0), this.fwRotationMatrix.x);
+	this.objects["rrWheel"].rotateOnAxis(new THREE.Vector3(1,0,0), this.fwRotationMatrix.x);
 	this.carAcc = acceleration;
 };
 
