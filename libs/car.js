@@ -27,12 +27,76 @@ CAR.car = function(params)
     this.wheelRadius = 0.3425;
 	this.throttle = 0;
 	this.castShadow = true;
+	this.dae;
+	this.objects = {};
+	this.fwRotationMatrix = new THREE.Vector3(0,0,0);
     
     this.load = function(scene, startFunc)
 	{
 		var obj = this;
 		var objLoader = new THREE.OBJMTLLoader();
+		var colladaLoader = new THREE.ColladaLoader();
 		var objMaterial = new THREE.MeshLambertMaterial( {color: 0x0BBD43} );
+		colladaLoader.load("res/models/db91.dae", function(collada)
+		{
+			obj.dae = collada.scene;
+			obj.dae.traverse(function(child)
+			{
+				child.traverse(function(e)
+				{
+					e.caseShadow = true;
+					e.receiveShadow = true;
+					if (e.material instanceof THREE.MeshPhongMaterial)
+					{
+						e.material.needsUpdate = true;
+					}	
+				});
+				if (child.colladaId == "w0"){
+					child.traverse(function(e){
+	                    obj.objects["flWheel"] = e;
+					});
+				}
+				if (child.colladaId == "w1"){
+					child.traverse(function(e){
+	                    obj.objects["frWheel"] = e;
+					});
+				}
+				if (child.colladaId == "w2"){
+					child.traverse(function(e){
+	                    obj.objects["rlWheel"] = e;
+					});
+				}
+				if (child.colladaId == "w3"){
+					child.traverse(function(e){
+	                    obj.objects["rrWheel"] = e;
+					});
+				}
+				if (child.colladaId == "badge"){
+					child.traverse(function(e){
+	                    obj.objects["badge"] = e;
+					});
+				}
+				if (child.colladaId == "cover"){
+					child.traverse(function(e){
+	                    obj.objects["cover"] = e;
+					});
+				}
+				if (child.colladaId == "glass"){
+					child.traverse(function(e){
+	                    obj.objects["glass"] = e;
+					});
+				}
+				if (child.colladaId == "default"){
+					child.traverse(function(e){
+	                    obj.objects["default"] = e;
+					});
+				}
+			});
+			obj.dae.rotation.x += Math.PI/2;
+			obj.dae.rotation.y += Math.PI;
+			scene.add(obj.dae);
+			startFunc();
+		});
 		objLoader.load("res/models/rapide.obj", "res/models/rapide.mtl", function(loadedObj)
 		{
 			loadedObj.traverse(function(child)
@@ -48,8 +112,7 @@ CAR.car = function(params)
 			loadedObj.position.y += 0.13067;
 			loadedObj.position.z = 1;
 			obj.add(loadedObj)
-			scene.add(obj);
-			startFunc();
+			//scene.add(obj);
 		});
 	};
 };
@@ -73,7 +136,7 @@ CAR.car.prototype.move = function(keys, camera, dt)
 			prop = dt * 10 / (this.carSpeed+10);
 			if (prop > 1)
 				prop = Math.sqrt(prop);
-			this.rotation.y += 2.5 * prop;
+			this.dae.rotation.z = this.rotation.y += 2.5 * prop;
 			this.cameraAngleY += this.cameraDelay;
 			this.cameraAngleY += 2.5 * prop;
 			if (this.cameraDelay > degToRad(-10))
@@ -89,7 +152,7 @@ CAR.car.prototype.move = function(keys, camera, dt)
 			prop = dt * 10 / (this.carSpeed+10);
 			if (prop > 1)
 				prop = Math.sqrt(prop);
-			this.rotation.y -= 2.5 * prop;
+			this.dae.rotation.z = this.rotation.y -= 2.5 * prop;
 		    this.cameraAngleY += this.cameraDelay;
 			this.cameraAngleY -= 2.5 * prop;
 			if (this.cameraDelay < degToRad(10))
@@ -168,8 +231,16 @@ CAR.car.prototype.move = function(keys, camera, dt)
 	else if (this.gear == 6 && this.rpm > 6900)
 		this.carSpeed -= acceleration * dt;
 		
-	this.position.x -= Math.sin(this.rotation.y) * this.carSpeed * dt;
-	this.position.z -= Math.cos(this.rotation.y) * this.carSpeed * dt;
+	this.dae.position.x = this.position.x -= Math.sin(this.rotation.y) * this.carSpeed * dt;
+	this.dae.position.z = this.position.z -= Math.cos(this.rotation.y) * this.carSpeed * dt;
+	this.fwRotationMatrix.y = this.cameraAngleY - this.rotation.y;
+	this.fwRotationMatrix.x -= Math.PI*dt;
+	this.objects["flWheel"].rotation.set(0,0,0);
+	this.objects["frWheel"].rotation.set(0,0,0);
+	this.objects["flWheel"].rotateOnAxis(new THREE.Vector3(0,1,0), this.fwRotationMatrix.y);
+	this.objects["flWheel"].rotateOnAxis(new THREE.Vector3(1,0,0), this.fwRotationMatrix.x);
+	this.objects["frWheel"].rotateOnAxis(new THREE.Vector3(0,1,0), this.fwRotationMatrix.y);
+	this.objects["frWheel"].rotateOnAxis(new THREE.Vector3(1,0,0), this.fwRotationMatrix.x);
 	this.carAcc = acceleration;
 };
 
