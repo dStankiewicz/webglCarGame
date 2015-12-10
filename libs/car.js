@@ -14,6 +14,8 @@ CAR.car = function(params)
     this.brakingForce = -25000;
     this.cameraAngleY = 0;
 	this.cameraDelay = 0.0;
+	this.cameraPositionY;
+	this.cameraSpeedMove;
     this.carAcc = 0;
     this.carMass = 1750;
     this.carSpeed = 0;
@@ -30,15 +32,14 @@ CAR.car = function(params)
 	this.objects = {};
     this.rpm = 0;
 	this.throttle = 0;
-	this.wheelBase = 0;
+	this.wheelBaseLength = 0;
+	this.wheelBaseWidth = 0;
     this.wheelRadius = 0.3425;
     
     this.load = function(scene, startFunc)
 	{
 		var obj = this;
-		var objLoader = new THREE.OBJMTLLoader();
 		var colladaLoader = new THREE.ColladaLoader();
-		var objMaterial = new THREE.MeshLambertMaterial( {color: 0x0BBD43} );
 		colladaLoader.load("res/models/db91.dae", function(collada)
 		{
 			obj.dae = collada.scene;
@@ -95,10 +96,10 @@ CAR.car = function(params)
 				}
 			});
 			obj.dae.rotation.x += Math.PI/2;
-			obj.dae.rotation.y += Math.PI;
+            obj.dae.rotation.y += Math.PI;
 			scene.add(obj.dae);
 			
-			obj.wheelBase = obj.objects["flWheel"].parent.position.distanceTo(obj.objects["rlWheel"].parent.position);
+			obj.wheelBaseLength = obj.objects["flWheel"].parent.position.distanceTo(obj.objects["rlWheel"].parent.position);
 			obj.wheelRadius = new THREE.Box3().setFromObject(obj.objects["flWheel"]).size().y/2;
 			
 			// Add all wheel to single array for easier accessing
@@ -108,7 +109,7 @@ CAR.car = function(params)
 			obj.objects["wheels"].push(obj.objects["rlWheel"]);
 			obj.objects["wheels"].push(obj.objects["rrWheel"]);
 			
-			obj.objects["exceptWheels"] = [];
+            obj.objects["exceptWheels"] = [];
 			obj.objects["exceptWheels"].push(obj.objects["default"]);
 			obj.objects["exceptWheels"].push(obj.objects["glass"]);
 			obj.objects["exceptWheels"].push(obj.objects["cover"]);
@@ -146,7 +147,7 @@ CAR.car.prototype.move = function(keys, camera, dt)
 	var acceleration = 0;
 	var fTraction = 0, fRr = 0, force = 0;
 	var fDrag = 0;
-	var rr = 80 * this.cx; //Rolling resistance
+	var rr = 30 * this.cx; //Rolling resistance
 	var radiusChange = 0;
 	var rotationRadius = 0;
 	var maxTurn = 45;
@@ -243,11 +244,11 @@ CAR.car.prototype.move = function(keys, camera, dt)
 	else if (this.gear == 6 && this.rpm > 6900)
 		this.carSpeed -= acceleration * dt;
 	
-	var speedFactor = 3 / (this.carSpeed + 3);
+	var speedFactor = 6 / (this.carSpeed + 6);
 	
 	/////////// Camera
 	this.cameraAngleY = this.rotation.y;
-	this.cameraDelay = degToRad(maxTurn * speedFactor) * this.carTurn;
+	this.cameraDelay = degToRad(maxTurn * speedFactor * this.carTurn);
 	if(!keys.pressed[39] && !keys.pressed[37])
 	{
 		//this.cameraAngleY += this.cameraDelay;
@@ -267,13 +268,10 @@ CAR.car.prototype.move = function(keys, camera, dt)
 	}
 	else
 	{
-		rotationRadius = this.wheelBase / Math.sin(Math.abs(this.carTurn) * degToRad(maxTurn * speedFactor));
+		rotationRadius = this.wheelBaseLength / Math.sin(degToRad(maxTurn * speedFactor * this.carTurn));
 		radiusChange = distanceTraveled / rotationRadius; // in radians
 	}
-	if (this.carTurn > 0)
-		this.dae.rotation.z = this.rotation.y -= radiusChange;
-	else
-		this.dae.rotation.z = this.rotation.y += radiusChange;
+	this.dae.rotation.z = this.rotation.y -= radiusChange;
 	var phi = Math.PI - radiusChange/2.0 - Math.PI/2.0 + this.rotation.y;
 	if (this.rotation.y == 0)
 	{
@@ -286,29 +284,41 @@ CAR.car.prototype.move = function(keys, camera, dt)
 		this.dae.position.z = this.position.z -= Math.sin(phi) * 2 * (Math.sin(radiusChange/2.0)*rotationRadius);
 	}
 	this.fwRotationMatrix.y = this.cameraAngleY - this.rotation.y;
-	this.fwRotationMatrix.x -= (dt * this.carSpeed) / (2.0*Math.PI*this.wheelRadius);
+    this.fwRotationMatrix.x -= (dt * this.carSpeed) / (2.0*Math.PI*this.wheelRadius);
 	this.objects["flWheel"].rotation.set(0,0,0);
 	this.objects["frWheel"].rotation.set(0,0,0);
 	this.objects["rlWheel"].rotation.set(0,0,0);
 	this.objects["rrWheel"].rotation.set(0,0,0);
 	this.objects["flWheel"].rotateOnAxis(new THREE.Vector3(0,1,0), this.fwRotationMatrix.y);
-	this.objects["frWheel"].rotateOnAxis(new THREE.Vector3(0,1,0), this.fwRotationMatrix.y);
+    this.objects["frWheel"].rotateOnAxis(new THREE.Vector3(0,1,0), this.fwRotationMatrix.y);
 	for (var x in this.objects["wheels"]) {
 		this.objects["wheels"][x].rotateOnAxis(new THREE.Vector3(-1,0,0), this.fwRotationMatrix.x);
 	}
 	
 	/////////// Speed depentant rotations
-	var centForge;
+	var centForce;
 	if (rotationRadius == 0)
-		centForge = 0;
+		centForce = 0;
 	else
-		centForge = this.carMass * this.carSpeed * this.carSpeed / rotationRadius;
-	if (this.carTurn > 0)
-		centForge = -centForge;
-	for (var x in this.objects["exceptWheels"]) {
-		this.objects["exceptWheels"][x].rotation.x = -acceleration/400;
-		this.objects["exceptWheels"][x].rotation.z = centForge/1300000;
+	{
+		centForce = this.carMass * this.carSpeed * this.carSpeed / rotationRadius;
+		if (this.carTurn < 0)
+			centForce = -centForce;
 	}
+	if (this.carTurn > 0)
+		centForce = -centForce; // centrufugal force
+		
+	var wantedXTilt = -acceleration/400;
+	var deltaXTilt = this.objects["default"].rotation.x - wantedXTilt;
+	var xTilt = this.objects["default"].rotation.x - deltaXTilt * 8 * dt; // camera tilt amortization
+	for (var x in this.objects["exceptWheels"]) {
+		this.objects["exceptWheels"][x].rotation.x = xTilt;
+		this.objects["exceptWheels"][x].rotation.z = centForce/1300000;
+	}
+	
+	
+	this.cameraSpeedMove = this.carSpeed / 100;
+	this.cameraPositionY = xTilt;
 	/////////// END Speed dependant rotations
 	this.carAcc = acceleration;
 };

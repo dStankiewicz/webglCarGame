@@ -1,4 +1,4 @@
-/*global THREE requestAnimationFrame degToRad*/
+/*global THREE requestAnimationFrame*/
 var CAR = CAR || {};
 
 var scene = new THREE.Scene();
@@ -44,7 +44,7 @@ CAR.game = function()
 		renderer.setSize(window.innerWidth, window.innerHeight);
 	}, false);
 	
-	car.load(scene, startGame);
+	car.load(scene, startGame, "");
 };
 
 function start()
@@ -68,15 +68,31 @@ var startGame = function()
 		requestAnimationFrame(render);
 		var dt = clock.getDelta();
 		car.move(keys, camera, dt);
-		world.update(car, camera);
+		world.update(car, camera, dt);
+		checkCollision();
 		
 		// Camera position handling, including speed-dependent effects
 		camera.rotation.y = car.cameraAngleY + Math.PI;
-		camera.position.x = car.position.x - 10 * Math.sin(camera.rotation.y);
-		camera.position.z = car.position.z - 10 * Math.cos(camera.rotation.y);// + car.carAcc;
+		camera.position.x = car.position.x - (8 + car.cameraSpeedMove * 20) * Math.sin(camera.rotation.y);
+		camera.position.y = 2.5 + car.cameraPositionY * 5;
+		// camera.position.y = 20;
+		// camera.position.z = car.position.z;
+		// camera.position.x = car.position.x;
+		camera.position.z = car.position.z - (8 + car.cameraSpeedMove * 20) * Math.cos(camera.rotation.y);// + car.carAcc;
 		camera.lookAt(car.position);
 		
 		renderer.render(scene, camera);
 	}
 	render();
+	var carBox;
+	function checkCollision()
+	{
+		world.hitText = "";
+		var carBB = new THREE.Box3().setFromObject(car.dae);
+		for (var colidObj = 0; colidObj < world.collidableMeshList.length; colidObj++)
+		{		
+			if (world.collidableMeshList[colidObj].isIntersectionBox(carBB))
+				world.hitText = "Hit!";
+		}	
+	}
 };

@@ -1,8 +1,17 @@
-/*global THREE*/
+/*global THREE THREEx StringMask*/
 var CAR = CAR || {};
 
 CAR.world = function(scene) 
 {
+	this.collidableMeshList = [];
+	this.hitText = "";
+	
+	this.addToCollidable = function(object)
+	{
+		var bb = new THREE.Box3().setFromObject(object);
+		this.collidableMeshList.push(bb);
+	}
+	
 	//scene.fog = new THREE.Fog(0xE08748, 1, 50);
 	var textureLoader = new THREE.TextureLoader();
     //Lights
@@ -39,7 +48,7 @@ CAR.world = function(scene)
 	//Road
 	var asphaltTex = textureLoader.load("res/asphalt.jpg");
 	asphaltTex.wrapS = asphaltTex.wrapT = THREE.RepeatWrapping;
-	asphaltTex.repeat.set(1, 40);
+	asphaltTex.repeat.set(1, 80);
 	var asphaltMat = new THREE.MeshBasicMaterial({ map: asphaltTex });
 	var asphlatGeo = new THREE.PlaneGeometry(15, h);
 	var asphalt = new THREE.Mesh(asphlatGeo, asphaltMat);
@@ -58,15 +67,15 @@ CAR.world = function(scene)
 	var shader = THREE.ShaderLib["cube"];
 	var uniforms = THREE.UniformsUtils.clone(shader.uniforms);
 	uniforms['tCube'].value = textureCube;   // textureCube has been init before
-	var material = new THREE.ShaderMaterial({
+	var skyboxMaterial = new THREE.ShaderMaterial({
 		fragmentShader    : shader.fragmentShader,
     	vertexShader  : shader.vertexShader,
     	uniforms  : uniforms,
 		depthWrite : false
 		});
-	material.side = THREE.BackSide;
+	skyboxMaterial.side = THREE.BackSide;
 	// build the skybox Mesh 
-	var skybox    = new THREE.Mesh(new THREE.BoxGeometry(100000, 100000, 100000, 1, 1, 1), material);
+	var skybox    = new THREE.Mesh(new THREE.BoxGeometry(100000, 100000, 100000, 1, 1, 1), skyboxMaterial);
 	skybox.doubleSided = true;
 	// add it to the scene
 	scene.add(skybox);
@@ -91,12 +100,23 @@ CAR.world = function(scene)
 	scene.add(tor1);
 	scene.add(cyl1);
 	scene.add(cyl2);
+	this.addToCollidable(cyl1);
+	this.addToCollidable(cyl2);
+	this.addToCollidable(tor1);
+	
+	var bb = new THREE.BoundingBoxHelper(tor1);
+	console.log(bb.geometry.vertices[1]);
+	bb.update();
+	console.log(bb.geometry.vertices[1]);
+	scene.add(bb);
+	console.log(bb.geometry.vertices[1]);
 	
 	var boxGeo = new THREE.BoxGeometry(5,5,5);
 	var box = new THREE.Mesh(boxGeo, materialC);
 	box.position.set(-5,2,-5);
 	box.castShadow = true;
 	scene.add(box);
+	this.addToCollidable(box);
 	
 	cyl1.position.set(10, 0, 0);
 	cyl2.position.set(-10, 0, 0);
@@ -117,8 +137,9 @@ CAR.world = function(scene)
 	text2.style.fontSize = "12px";
 	text2.style.color = "white";
 	document.body.appendChild(text2);
+	var time = 0;
 
-	this.update = function(car, camera) {
+	this.update = function(car, camera, dt) {
 		var position = car.position;
 		
 		//car.position.z  = 0
@@ -132,7 +153,10 @@ CAR.world = function(scene)
 		
 		var speed = car.carSpeed * 3600 / 1000;
 		var acc = car.carAcc / 9.8;
+		var formatter = new StringMask('99:99.990');
+		var textTime = formatter.apply(time*1000);
 		text2.innerHTML = "Speed (km/h): " + speed + "<br />" + "Acceleration (g): " + acc + 
-						"<br />RPM/Gear: " + car.rpm + "/" + car.gear;
+						"<br />RPM/Gear: " + car.rpm + "/" + car.gear + "<br />" + this.hitText + "<br />" + textTime;
+		time += dt;
 	};
 };
