@@ -44,7 +44,7 @@ CAR.game = function()
 		renderer.setSize(window.innerWidth, window.innerHeight);
 	}, false);
 	
-	car.load(scene, startGame, "");
+	car.load("res/models/data.json", scene, true, startGame);
 };
 
 function start()
@@ -83,6 +83,7 @@ var startGame = function()
 		
 		renderer.render(scene, camera);
 	}
+	car.rotation.y = Math.PI;
 	render();
 	var carBox;
 	function checkCollision()

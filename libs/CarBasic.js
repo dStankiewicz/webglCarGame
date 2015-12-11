@@ -62,7 +62,7 @@ CAR.CarBasic.prototype.loadCollada = function(scene){
     loader.options.convertUpAxis = true;
     loader.load(obj.guiControls.colladaFilePath,          function (collada){
         obj.dae = collada.scene;
-        obj.dae.scale.x = obj.dae.scale.y = obj.dae.scale.z = 1;
+        obj.dae.scale.x = obj.dae.scale.y = obj.dae.scale.z = 4.58/15.18;
         obj.dae.traverse(function (child){
             child.traverse(function(e){
                 e.castShadow = true;
@@ -138,6 +138,7 @@ CAR.CarBasic.prototype.loadCollada = function(scene){
                     })
                     break;
                 case "nadwozie":
+                    child.material.side = THREE.DoubleSide;
                     obj.nadwozie = child;
                     child.traverse(function(child2){
                          switch(child2.colladaId){
@@ -176,6 +177,7 @@ CAR.CarBasic.prototype.loadCollada = function(scene){
                     break;
             }
         });
+	    obj.wheelBaseLength = obj.kolo_pl.position.distanceTo(obj.kolo_pp.position);
         obj.dae.updateMatrix();
         scene.add(obj.dae);    
         obj.datGUI.revert();
@@ -288,7 +290,8 @@ CAR.CarBasic.prototype.loadGui = function (controls){
     
 }
 
-CAR.CarBasic.prototype.load = function (file, scene, controls){
+CAR.CarBasic.prototype.load = function (file, scene, controls, startFunction){
+    startFunction = typeof startFunction !== 'undefined' ? startFunction : null;
     var obj = this;
     obj.jsonFileName = file;
     //var results = document.getElementById("results");
@@ -300,7 +303,8 @@ CAR.CarBasic.prototype.load = function (file, scene, controls){
             obj.LOADED_DATA = JSON.parse(hr.responseText);
             obj.loadGui(controls);
             obj.loadCollada(scene);
-            
+            if(startFunction !== null)
+            startFunction()
         }
     }
     hr.send("file="+file);
