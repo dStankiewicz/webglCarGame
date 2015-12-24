@@ -4,13 +4,15 @@ var CAR = CAR || {};
 var scene = new THREE.Scene();
 var world = new CAR.world(scene);
 var renderer = new THREE.WebGLRenderer({ antialias: true });
-var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100000);
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 10000);
 var keys = new CAR.Controls();
 var car = new CAR.car();
 var loadingCanvas = document.createElement('div');
 	
 CAR.game = function()
 {
+	this.currentGate = 0;
+	
 	renderer.setSize(window.innerWidth, window.innerHeight);
 
 	renderer.shadowMap.enabled = true;
@@ -44,7 +46,9 @@ CAR.game = function()
 		renderer.setSize(window.innerWidth, window.innerHeight);
 	}, false);
 	
-	car.load("res/models/data.json", scene, true, startGame);
+	var scale = 4.58/15.18;
+	// var scale = 1;
+	car.load("res/models/save.json", scene, true, startGame, {scale});
 };
 
 function start()
@@ -58,33 +62,45 @@ var startGame = function()
 	loadingCanvas.style.display = 'none';
 	var clock = new THREE.Clock();
 	
-	//Uncomment after implementing loading from JSON
-	//scene.add(car);
-	
 	camera.position.set(0,2.5,0);
-	//camera.rotation.y = Math.PI;
+	car.rotation.y = Math.PI;
+    car.cubeCamera.updateCubeMap( renderer, scene ); 
 	
 	function render() {
 		requestAnimationFrame(render);
+		
+        //cubeCamera generuje envMap czyli odbicia na samochodzie. Generowane jest to na podstawie całej sceny i jeśli nie wylaczy sie auta przed update to w odbiciu będą widoczne elementy auta
+        //car.dae.visible = false; // *cough*
+//        car.cubeCamera.updateCubeMap( renderer, scene ); 
+        //car.dae.visible = true; // *cough*
+		
 		var dt = clock.getDelta();
 		car.move(keys, camera, dt);
 		world.update(car, camera, dt);
 		checkCollision();
+		//checkCollisionWithGate();
 		
 		// Camera position handling, including speed-dependent effects
 		camera.rotation.y = car.cameraAngleY + Math.PI;
-		camera.position.x = car.position.x - (8 + car.cameraSpeedMove * 20) * Math.sin(camera.rotation.y);
+		camera.position.x = car.position.x - (8.0 + car.cameraSpeedMove * 20) * Math.sin(camera.rotation.y);
 		camera.position.y = 2.5 + car.cameraPositionY * 5;
 		// camera.position.y = 20;
 		// camera.position.z = car.position.z;
 		// camera.position.x = car.position.x;
-		camera.position.z = car.position.z - (8 + car.cameraSpeedMove * 20) * Math.cos(camera.rotation.y);// + car.carAcc;
+		camera.position.z = car.position.z - (8.0 + car.cameraSpeedMove * 20) * Math.cos(camera.rotation.y);// + car.carAcc;
 		camera.lookAt(car.position);
 		
 		renderer.render(scene, camera);
 	}
-	car.rotation.y = Math.PI;
+	
+	this.currentGate = 1;
+	
+	var boundingBox = new THREE.BoundingBoxHelper(world.checkPointsList[this.currentGate]);
+	scene.add(boundingBox);
+	
 	render();
+	
+	
 	var carBox;
 	function checkCollision()
 	{
@@ -92,8 +108,21 @@ var startGame = function()
 		var carBB = new THREE.Box3().setFromObject(car.dae);
 		for (var colidObj = 0; colidObj < world.collidableMeshList.length; colidObj++)
 		{		
-			if (world.collidableMeshList[colidObj].isIntersectionBox(carBB))
-				world.hitText = "Hit!";
+			// if (world.collidableMeshList[colidObj].isIntersectionBox(carBB))
+				// world.hitText = "Hit!";
 		}	
+	}
+	function checkCollisionWithGate()
+	{
+		world.hitText = "";
+		var carBB = new THREE.Box3().setFromObject(car.dae);
+		if (world.checkPointsList[this.currentGate].isIntersectionBox(carBB))
+		{
+			world.hitText = "Hit!";
+			scene.delete(boundingBox);
+			this.currentGate++;
+			boundingBox = new THREE.BoundingBoxHelper(world.checkPointsList[this.currentGate]);
+			scene.add(boundingBox);
+		}
 	}
 };

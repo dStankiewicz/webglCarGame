@@ -11,29 +11,22 @@ CAR.car = function(params)
     CAR.CarBasic.call(this);
     
     this.brake = 0;
-    this.brakingForce = -25000;
     this.cameraAngleY = 0;
 	this.cameraDelay = 0.0;
 	this.cameraPositionY;
 	this.cameraSpeedMove;
     this.carAcc = 0;
-    this.carMass = 1750;
     this.carSpeed = 0;
     this.carTurn = 0;
 	this.castShadow = true;
-    this.cx = 0.35;
 	this.dae;
-    this.engineTorque = 560;
-    this.finalDrive = 3.71;
 	this.fwRotationMatrix = new THREE.Vector3(0,0,0);
     this.gear = 1;
-    this.gearRatios = [3.15, 1.95, 1.44, 1.15, 0.94, 0.76];
     this.loaded = false;
 	this.objects = {};
     this.rpm = 0;
 	this.throttle = 0;
 	this.wheelBaseWidth = 0;
-    this.wheelRadius = 0.3425;
 };
 
 CAR.car.prototype = Object.create(CAR.CarBasic.prototype);
@@ -46,7 +39,7 @@ CAR.car.prototype.move = function(keys, camera, dt)
 	var acceleration = 0;
 	var fTraction = 0, fRr = 0, force = 0;
 	var fDrag = 0;
-	var rr = 30 * this.cx; //Rolling resistance
+	var rr = 30 * this.params.cx; //Rolling resistance
 	var radiusChange = 0;
 	var rotationRadius = 0;
 	var maxTurn = 45;
@@ -88,10 +81,10 @@ CAR.car.prototype.move = function(keys, camera, dt)
 		else
 			this.throttle = 1;
 		if (this.carSpeed < 0)
-			fTraction = this.brakingForce * this.throttle;
+			fTraction = this.params.brakingForce * this.throttle;
 			
 		this.brake = 0;
-		fTraction = (this.engineTorque * this.gearRatios[this.gear-1] * this.finalDrive * 0.7 / this.wheelRadius) * this.throttle;
+		fTraction = (this.params.engineTorque * this.params.gearRatios[this.gear-1] * this.params.finalDrive * 0.7 / this.params.wheelRadius) * this.throttle;
 	}
 	
 	if (keys.pressed[40]) // Down arrow
@@ -104,7 +97,7 @@ CAR.car.prototype.move = function(keys, camera, dt)
 				this.brake = 1;
 				
 			this.throttle = 0;
-			fTraction = this.brakingForce * this.brake;
+			fTraction = this.params.brakingForce * this.brake;
 		}
 			
 		else
@@ -121,17 +114,17 @@ CAR.car.prototype.move = function(keys, camera, dt)
 	}
 	/////////// END Keyboard
 	
-	fDrag = -this.cx * this.carSpeed * this.carSpeed;
+	fDrag = -this.params.cx * this.carSpeed * this.carSpeed;
 	fRr = -rr * this.carSpeed;
 	force = fTraction + fDrag + fRr;
 	
-	acceleration = force / this.carMass;
+	acceleration = force / this.params.carMass;
 		
 	this.carSpeed += acceleration * dt;
 	if (this.carSpeed < 0 && keys.pressed[40])
 		this.carSpeed = 0;
 		
-	this.rpm = this.calcRpm(this.carSpeed, this.gearRatios[this.gear-1], this.finalDrive, this.wheelRadius);
+	this.rpm = this.calcRpm(this.carSpeed, this.params.gearRatios[this.gear-1], this.params.finalDrive, this.params.wheelRadius);
 	if (this.rpm < 850 && this.gear == 1)
 		this.rpm = 850;
 	
@@ -140,7 +133,7 @@ CAR.car.prototype.move = function(keys, camera, dt)
 		this.gear++;
 	else if (this.rpm < 3000 && this.gear > 1)
 		this.gear--;
-	else if (this.gear == 6 && this.rpm > 6900)
+	else if (this.gear == this.params.gearRatios.length && this.rpm > 6900)
 		this.carSpeed -= acceleration * dt;
 	
 	var speedFactor = 6 / (this.carSpeed + 6);
@@ -167,7 +160,7 @@ CAR.car.prototype.move = function(keys, camera, dt)
 	}
 	else
 	{
-		rotationRadius = this.wheelBaseLength / Math.sin(degToRad(maxTurn * speedFactor * this.carTurn));
+		rotationRadius = this.params.wheelBaseLength / Math.sin(degToRad(maxTurn * speedFactor * this.carTurn));
 		radiusChange = distanceTraveled / rotationRadius; // in radians
 	}
 	this.dae.rotation.y = this.rotation.y -= radiusChange;
@@ -183,7 +176,7 @@ CAR.car.prototype.move = function(keys, camera, dt)
 		this.dae.position.z = this.position.z += Math.sin(phi) * 2 * (Math.sin(radiusChange/2.0)*rotationRadius);
 	}
 	this.fwRotationMatrix.y = this.cameraAngleY - this.rotation.y;
-    this.fwRotationMatrix.x -= (dt * this.carSpeed) / (2.0*Math.PI*this.wheelRadius);
+    this.fwRotationMatrix.x -= (dt * this.carSpeed) / (2.0*Math.PI*this.params.wheelRadius);
 	// this.objects["kolo_pl"].rotation.set(0,0,0);
 	// this.objects["kolo_pp"].rotation.set(0,0,0);
 	// this.objects["kolo_tl"].rotation.set(0,0,0);
@@ -195,14 +188,14 @@ CAR.car.prototype.move = function(keys, camera, dt)
 	// }
 	this.kolo_pl.rotation.y = this.kolo_pp.rotation.y = this.fwRotationMatrix.y;
 
-    this.felga_pl.rotation.x = this.fwRotationMatrix.x;
-    this.felga_pp.rotation.x = this.fwRotationMatrix.x;
-    this.felga_tp.rotation.x = this.fwRotationMatrix.x;
-    this.felga_tl.rotation.x = this.fwRotationMatrix.x;
-    this.opona_pl.rotation.x = this.fwRotationMatrix.x;
-    this.opona_pp.rotation.x = this.fwRotationMatrix.x;
-    this.opona_tl.rotation.x = this.fwRotationMatrix.x;
-    this.opona_tp.rotation.x = this.fwRotationMatrix.x;
+    this.felga_pl.rotation.x = -this.fwRotationMatrix.x;
+    this.felga_pp.rotation.x = -this.fwRotationMatrix.x;
+    this.felga_tp.rotation.x = -this.fwRotationMatrix.x;
+    this.felga_tl.rotation.x = -this.fwRotationMatrix.x;
+    this.opona_pl.rotation.x = -this.fwRotationMatrix.x;
+    this.opona_pp.rotation.x = -this.fwRotationMatrix.x;
+    this.opona_tl.rotation.x = -this.fwRotationMatrix.x;
+    this.opona_tp.rotation.x = -this.fwRotationMatrix.x;
 	
 	/////////// Speed depentant rotations
 	var centForce;
@@ -210,7 +203,7 @@ CAR.car.prototype.move = function(keys, camera, dt)
 		centForce = 0;
 	else
 	{
-		centForce = this.carMass * this.carSpeed * this.carSpeed / rotationRadius;
+		centForce = this.params.carMass * this.carSpeed * this.carSpeed / rotationRadius;
 		if (this.carTurn < 0)
 			centForce = -centForce;
 	}

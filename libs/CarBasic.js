@@ -2,49 +2,82 @@
 
 var CAR = CAR || {};
 
+
+
 CAR.CarBasic = function() {
     
     THREE.Object3D.call(this);
     
+    this.cubeCamera = new THREE.CubeCamera( 1, 1000, 256 );
+    this.cubeCamera.renderTarget.texture.minFilter = THREE.LinearMipMapLinearFilter;
+    this.textureCube = this.cubeCamera.renderTarget;
+    this.mlib = new CAR.Materials(this.textureCube);
+    
+  //grupy:
     this.kolo_pl;
     this.kolo_pp;
     this.nadwozie;
     this.kolo_tp;
     this.kolo_tl;
+    
+  //calosc
     this.dae;
+    
+  //elementy:
     this.felga_pp; this.opona_pp; this.hamulec_pp;
     this.felga_pl; this.hamulec_pl; this.opona_pl;  
     this.felga_tp; this.opona_tp; this.hamulec_tp;
     this.felga_tl; this.opona_tl; this.hamulec_tl;
     this.karoseria; this.lusterka; this.spoiler; this.szyby; this.wycieraczka; this.wydech; this.zderzak_p; this.zderzak_t; this.lampy_p; this.lampy_t;
-    this.LOADED_DATA;
-    this.jsonFileName;
+    
+    this.LOADED_DATA; //ustawienia zaladowane z pliku .json
+    this.jsonFileName; //sciezka do pliku .json
+    
+  //kontrolki
     this.datGUI;
     
-    this.guiControls = new function(){           
+    this.folder;
+    
+    this.params = new function(){           
 
         this.colladaFilePath = "";
+        this.scale = 1.1;
         
         //car
-        this.felgi = "#ffffff"; 
-        this.hamulce = "#ffffff"; 
-        this.karoseria = "#ffffff"; 
-        this.lusterka = "#ffffff"; 
-        this.opony = "#ffffff"; 
+        this.felgi = "Orange"; 
+        this.hamulce = "Orange"; 
+        this.karoseria = "Orange"; 
+        this.lusterka = "Orange"; 
+        this.opony = "Orange"; 
         this.dodaj_spoiler = true;
-        this.spoiler = "#ffffff"; 
-        this.szyby = "#ffffff"; 
-        this.wycieraczka = "#ffffff"; 
-        this.wydech = "#ffffff"; 
-        this.zderzakp = "#ffffff"; 
-        this.zderzakt = "#ffffff"; 
+        this.spoiler = "Orange"; 
+        this.szyby = "Orange"; 
+        this.wycieraczka = "Orange"; 
+        this.wydech = "Orange"; 
+        this.zderzakp = "Orange"; 
+        this.zderzakt = "Orange"; 
+        this.lampy_t = "Orange";
+        this.lampy_p = "Orange";
 
+        //technical data
+        this.brakingForce = -25000;
+        this.carMass = 1750;
+        this.cx = 0.35;
+        this.engineTorque = 560;
+        this.finalDrive = 3.71;
+        this.wheelRadius = 0.3425;
+        this.wheelBaseLength = 0.1;
+        this.gearRatios = [3.15, 1.95, 1.44, 1.15, 0.94, 0.76];
+        this.gearRatios_0 = 3.15;
+        this.gearRatios_1 = 1.95;
+        this.gearRatios_2 = 1.44;
+        this.gearRatios_3 = 1.15;
+        this.gearRatios_4 = 0.94;
+        this.gearRatios_5 = 0.76;
+        
         this.skret = 0;
         this.przyspieszenie = 0;
-    }
-        
-    
-    
+    } 
 }
 
 CAR.CarBasic.prototype = Object.create( THREE.Object3D.prototype );
@@ -52,27 +85,139 @@ CAR.CarBasic.prototype = Object.create( THREE.Object3D.prototype );
 // Ustawiamy właściwość "constructor" na obiekt Student
 //CAR.CarBasic.prototype.constructor = CAR.CarBasic;
 
-// Zmieniamy metodę "sayHello"
+CAR.CarBasic.prototype.loadGui = function (controls){
+    var obj = this;
+    obj.datGUI = new dat.GUI({ autoPlace: controls, load: obj.LOADED_DATA});
+    obj.datGUI.remember(obj.params);
+       
+    
+    if(!controls){
+        var customContainer = document.getElementById('my-gui-container');
+        if(customContainer != null) {
+            customContainer.appendChild(obj.datGUI.domElement); 
+        }
+    }
+          	
+    var f0 = obj.datGUI.addFolder('Info');
+        f0.add(obj.params, 'colladaFilePath');
+        f0.add(obj.params, 'scale', 0, 10).onChange(function(value){
+            obj.dae.scale.x = obj.dae.scale.y = obj.dae.scale.z = value;
+        });
+        f0.open();
+    
+    var f1 = obj.datGUI.addFolder('Materials');
+    obj.folder = f1;
+        
+        f1.add(obj.params, 'skret', -5, 5);
+        f1.add(obj.params, 'przyspieszenie', -5, 700);;	
+    
+        f1.add(obj.params, 'zderzakp', obj.mlib.names ).onChange(function(value){
+            obj.zderzak_p.children[0].material = obj.mlib.materials[value];
+        });	
+    
+        f1.add(obj.params, 'zderzakt', obj.mlib.names ).onChange(function(value){
+            obj.zderzak_t.children[0].material = obj.mlib.materials[value];
+        });	
+//    
+        f1.add(obj.params, 'karoseria', obj.mlib.names ).onChange(function(value){
+            obj.karoseria.children[0].material = obj.mlib.materials[value];
+        }).listen();	
+    
+        f1.add(obj.params, 'lusterka', obj.mlib.names ).onChange(function(value){
+            obj.lusterka.children[0].material = obj.mlib.materials[value];
+        });	
+        
+        f1.add(obj.params, 'lampy_t', obj.mlib.names ).onChange(function(value){
+            obj.lampy_t.children[0].material = obj.mlib.materials[value];
+        });	
+    
+        f1.add(obj.params, 'lampy_p', obj.mlib.names ).onChange(function(value){
+            obj.lampy_p.children[0].material = obj.mlib.materials[value];
+        });	
+        
+        f1.add(obj.params, 'szyby', obj.mlib.names ).onChange(function(value){
+            obj.szyby.children[0].material = obj.mlib.materials[value];
+        });	
+    
+        f1.add(obj.params, 'spoiler', obj.mlib.names ).onChange(function(value){
+            obj.spoiler.children[0].material = obj.mlib.materials[value];
+        });	
+        
+        f1.add(obj.params, 'wycieraczka', obj.mlib.names ).onChange(function(value){
+            obj.wycieraczka.children[0].material = obj.mlib.materials[value];
+        });	
+    
+        f1.add(obj.params, 'wydech', obj.mlib.names ).onChange(function(value){
+            obj.wydech.children[0].material = obj.mlib.materials[value];
+        });	
+    
+        f1.add(obj.params, 'felgi', obj.mlib.names ).onChange(function(value){
+            obj.felga_pl.children[0].material = obj.mlib.materials[value];
+            obj.felga_pp.children[0].material = obj.mlib.materials[value];
+            obj.felga_tl.children[0].material = obj.mlib.materials[value];
+            obj.felga_tp.children[0].material = obj.mlib.materials[value];
+        });	
+    
+        f1.add(obj.params, 'hamulce', obj.mlib.names ).onChange(function(value){
+            obj.hamulec_pl.children[0].material = obj.mlib.materials[value];
+            obj.hamulec_pp.children[0].material = obj.mlib.materials[value];
+            obj.hamulec_tl.children[0].material = obj.mlib.materials[value];
+            obj.hamulec_tp.children[0].material = obj.mlib.materials[value];
+        });	
+    
+    
+        f1.open();
+    
+    var f2 = obj.datGUI.addFolder('Technical data');
+        f2.add(obj.params, 'brakingForce', -50000, 0);
+        f2.add(obj.params, 'carMass', 0, 5000);
+        f2.add(obj.params, 'cx', 0, 1);
+        f2.add(obj.params, 'engineTorque', 0, 1000);
+        f2.add(obj.params, 'wheelRadius', 0, 1);
+        f2.add(obj.params, 'wheelBaseLength', 0, 10).listen();
+        f2.add(obj.params, 'finalDrive', 0, 10);
+        var f2_1 = f2.addFolder('gearRatios');
+            f2_1.add(obj.params, 'gearRatios_0', 0, 10).onChange(function(value){
+                obj.params.gearRatios[0] = value;
+            });
+            f2_1.add(obj.params, 'gearRatios_1', 0, 10).onChange(function(value){
+                obj.params.gearRatios[1] = value;
+            });
+            f2_1.add(obj.params, 'gearRatios_2', 0, 10).onChange(function(value){
+                obj.params.gearRatios[2] = value;
+            });
+            f2_1.add(obj.params, 'gearRatios_3', 0, 10).onChange(function(value){
+                obj.params.gearRatios[3] = value;
+            });
+            f2_1.add(obj.params, 'gearRatios_4', 0, 10).onChange(function(value){
+                obj.params.gearRatios[4] = value;
+            });
+            f2_1.add(obj.params, 'gearRatios_5', 0, 10).onChange(function(value){
+                obj.params.gearRatios[5] = value;
+            });
+    f2.open();
+    f2.d
+}
 
 
-CAR.CarBasic.prototype.loadCollada = function(scene){
+CAR.CarBasic.prototype.loadCollada = function(scene, params){
     var obj = this;
     var loader = new THREE.ColladaLoader();
-
+    
     loader.options.convertUpAxis = true;
-    loader.load(obj.guiControls.colladaFilePath,          function (collada){
+    loader.load(obj.params.colladaFilePath,          function (collada){
         obj.dae = collada.scene;
-        obj.dae.scale.x = obj.dae.scale.y = obj.dae.scale.z = 4.58/15.18;
         obj.dae.traverse(function (child){
             child.traverse(function(e){
                 e.castShadow = true;
-                e.receiveShadow = true;
+                //e.receiveShadow = true;
                 if (e.material instanceof THREE.MeshPhongMaterial){
                     e.material.needsUpdate = true;
                 }	
             });
 
             switch(child.colladaId){
+                    
                 case "kolo_pp":
                     obj.kolo_pp = child;
                     child.traverse(function(child2){
@@ -138,7 +283,7 @@ CAR.CarBasic.prototype.loadCollada = function(scene){
                     })
                     break;
                 case "nadwozie":
-                    child.material.side = THREE.DoubleSide;
+                    
                     obj.nadwozie = child;
                     child.traverse(function(child2){
                          switch(child2.colladaId){
@@ -177,121 +322,19 @@ CAR.CarBasic.prototype.loadCollada = function(scene){
                     break;
             }
         });
-	    obj.wheelBaseLength = obj.kolo_pl.position.distanceTo(obj.kolo_pp.position);
+	    obj.params.wheelBaseLength = obj.kolo_pl.position.distanceTo(obj.kolo_pp.position);
         obj.dae.updateMatrix();
-        scene.add(obj.dae);    
         obj.datGUI.revert();
-        
+        obj.params.scale = params["scale"] || 1;
+        scene.add(obj.dae);   
+        scene.add( obj.cubeCamera );        
     });	
 };
     
-CAR.CarBasic.prototype.loadGui = function (controls){
-    var obj = this;
-    obj.datGUI = new dat.GUI({ autoPlace: controls, load: obj.LOADED_DATA});
-    obj.datGUI.remember(obj.guiControls);
-       
-    
-    if(!controls){
-        var customContainer = document.getElementById('my-gui-container');
-        if(customContainer != null) {
-            customContainer.appendChild(obj.datGUI.domElement); 
-        }
-    }
-          	
 
-    var f1 = this.datGUI.addFolder('Car');
-    
-        f1.add(obj.guiControls, 'colladaFilePath');
-        f1.add(obj.guiControls, 'skret', -5, 5);
-        f1.add(obj.guiControls, 'przyspieszenie', -5, 7);
-
-        f1.addColor(this.guiControls, 'felgi').onChange(function(value){
-            var e = obj.felga_tp.children[0];
-                    
-                e.material.color.r = hexToRgb(value).r/255;
-                e.material.color.g = hexToRgb(value).g/255;
-                e.material.color.b = hexToRgb(value).b/255;
-             
-            
-        });		
-//
-//            f1.addColor(guiControls, 'hamulce').onChange(function(value){
-//                hamulcet.material.color.r = hexToRgb(value).r/255;
-//                hamulcet.material.color.g = hexToRgb(value).g/255;
-//                hamulcet.material.color.b = hexToRgb(value).b/255;
-//            });	
-//
-//            f1.addColor(guiControls, 'karoseria').onChange(function(value){
-//                karoseria.material.color.r = hexToRgb(value).r/255;
-//                karoseria.material.color.g = hexToRgb(value).g/255;
-//                karoseria.material.color.b = hexToRgb(value).b/255;
-//            });	
-//
-//            f1.addColor(guiControls, 'lusterka').onChange(function(value){
-//                lusterka.material.color.r = hexToRgb(value).r/255;
-//                lusterka.material.color.g = hexToRgb(value).g/255;
-//                lusterka.material.color.b = hexToRgb(value).b/255;
-//            });
-//
-//            f1.addColor(guiControls, 'opony').onChange(function(value){
-//                oponyt.material.color.r = hexToRgb(value).r/255;
-//                oponyt.material.color.g = hexToRgb(value).g/255;
-//                oponyt.material.color.b = hexToRgb(value).b/255;
-//            });	
-//
-//            f1.add(guiControls, 'dodaj_spoiler').onChange(function(value){
-//                spoiler.visible = value;
-//            });	
-//
-//            $("#spoiler").click(function(){
-//                spoiler.visible = !spoiler.visible;
-//            });
-//
-//
-//
-//
-//            f1.addColor(guiControls, 'spoiler').onChange(function(value){
-//                spoiler.material.color.r = hexToRgb(value).r/255;
-//                spoiler.material.color.g = hexToRgb(value).g/255;
-//                spoiler.material.color.b = hexToRgb(value).b/255;
-//            });	
-//
-//            f1.addColor(guiControls, 'szyby').onChange(function(value){
-//                szyby.material.color.r = hexToRgb(value).r/255;
-//                szyby.material.color.g = hexToRgb(value).g/255;
-//                szyby.material.color.b = hexToRgb(value).b/255;
-//            });	
-//
-//            f1.addColor(guiControls, 'wycieraczka').onChange(function(value){
-//                wycieraczka.material.color.r = hexToRgb(value).r/255;
-//                wycieraczka.material.color.g = hexToRgb(value).g/255;
-//                wycieraczka.material.color.b = hexToRgb(value).b/255;
-//            });	
-//
-//            f1.addColor(guiControls, 'wydech').onChange(function(value){
-//                wydech.material.color.r = hexToRgb(value).r/255;
-//                wydech.material.color.g = hexToRgb(value).g/255;
-//                wydech.material.color.b = hexToRgb(value).b/255;
-//            });	
-//
-//            f1.addColor(guiControls, 'zderzakp').onChange(function(value){
-//                zderzakp.material.color.r = hexToRgb(value).r/255;
-//                zderzakp.material.color.g = hexToRgb(value).g/255;
-//                zderzakp.material.color.b = hexToRgb(value).b/255;
-//            });	
-//
-//            f1.addColor(guiControls, 'zderzakt').onChange(function(value){
-//                zderzakt.material.color.r = hexToRgb(value).r/255;
-//                zderzakt.material.color.g = hexToRgb(value).g/255;
-//                zderzakt.material.color.b = hexToRgb(value).b/255;
-//            });
-
-        f1.open();
-    
-}
-
-CAR.CarBasic.prototype.load = function (file, scene, controls, startFunction){
-    startFunction = typeof startFunction !== 'undefined' ? startFunction : null;
+CAR.CarBasic.prototype.load = function (file, scene, controls, startFunction, params){
+    startFunction = startFunction || null;
+    params = params || {};
     var obj = this;
     obj.jsonFileName = file;
     //var results = document.getElementById("results");
@@ -302,7 +345,7 @@ CAR.CarBasic.prototype.load = function (file, scene, controls, startFunction){
         if(hr.readyState == 4 && hr.status == 200) {
             obj.LOADED_DATA = JSON.parse(hr.responseText);
             obj.loadGui(controls);
-            obj.loadCollada(scene);
+            obj.loadCollada(scene, params);
             if(startFunction !== null)
             startFunction()
         }
