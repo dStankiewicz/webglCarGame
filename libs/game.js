@@ -77,8 +77,7 @@ var startGame = function()
 		var dt = clock.getDelta();
 		car.move(keys, camera, dt);
 		world.update(car, camera, dt);
-		checkCollision();
-		//checkCollisionWithGate();
+		checkCollisionWithGate();
 		
 		// Camera position handling, including speed-dependent effects
 		camera.rotation.y = car.cameraAngleY + Math.PI;
@@ -95,34 +94,54 @@ var startGame = function()
 	
 	this.currentGate = 1;
 	
-	var boundingBox = new THREE.BoundingBoxHelper(world.checkPointsList[this.currentGate]);
-	scene.add(boundingBox);
+	world.checkPointsList[this.currentGate].parent.visible = true;
+	var carBB;
 	
 	render();
 	
-	
-	var carBox;
-	function checkCollision()
-	{
-		world.hitText = "";
-		var carBB = new THREE.Box3().setFromObject(car.dae);
-		for (var colidObj = 0; colidObj < world.collidableMeshList.length; colidObj++)
-		{		
-			// if (world.collidableMeshList[colidObj].isIntersectionBox(carBB))
-				// world.hitText = "Hit!";
-		}	
-	}
 	function checkCollisionWithGate()
 	{
-		world.hitText = "";
-		var carBB = new THREE.Box3().setFromObject(car.dae);
-		if (world.checkPointsList[this.currentGate].isIntersectionBox(carBB))
+		function getVertices(box)
 		{
-			world.hitText = "Hit!";
-			scene.delete(boundingBox);
-			this.currentGate++;
-			boundingBox = new THREE.BoundingBoxHelper(world.checkPointsList[this.currentGate]);
-			scene.add(boundingBox);
+			var verts = [];
+			verts[0] = new THREE.Vector3(box.max.x, box.max.y, box.max.z);
+			verts[1] = new THREE.Vector3(box.max.x, box.max.y, box.min.z);
+			verts[2] = new THREE.Vector3(box.max.x, box.min.y, box.max.z);
+			verts[3] = new THREE.Vector3(box.max.x, box.min.y, box.min.z);
+			verts[4] = new THREE.Vector3(box.min.x, box.max.y, box.max.z);
+			verts[5] = new THREE.Vector3(box.min.x, box.max.y, box.min.z);
+			verts[6] = new THREE.Vector3(box.min.x, box.min.y, box.max.z);
+			verts[7] = new THREE.Vector3(box.min.x, box.min.y, box.min.z);
+			return verts;
+		}
+		
+		function getCenterOfBB(boundingBox)
+		{
+			var centX = (boundingBox.box.max.x + boundingBox.box.min.x)/2;
+			var centY = (boundingBox.box.max.y + boundingBox.box.min.y)/2;
+			var centZ = (boundingBox.box.max.z + boundingBox.box.min.z)/2;
+			boundingBox.center = new THREE.Vector3(centX, centY, centZ);
+		}
+		
+		world.hitText = "";
+		carBB = new THREE.BoundingBoxHelper(car.dae);
+		carBB.update();
+		var carBBVerts = getVertices(carBB.box);
+		getCenterOfBB(carBB);
+		
+		for(var vertexIndex=0; vertexIndex < carBBVerts.length; vertexIndex++)
+		{
+			var localVertex = carBBVerts[vertexIndex].clone();
+			var directionVector = localVertex.sub(carBB.center);
+		    
+		    var ray = new THREE.Raycaster(carBB.center, directionVector.clone().normalize() );
+		    var collisionResults = ray.intersectObject(world.checkPointsList[this.currentGate]);
+		    if ( collisionResults.length > 0 && collisionResults[0].distance < directionVector.length() ) 
+		    {
+		        world.checkPointsList[this.currentGate].parent.visible = false;
+		        this.currentGate++;
+		        world.checkPointsList[this.currentGate].parent.visible = true;
+		    }
 		}
 	}
 };

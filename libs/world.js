@@ -90,21 +90,22 @@ CAR.world = function(scene)
             }
             if (child.colladaId){
                 if(child.colladaId.search('Plane') == 0){
-                obj.checkPointsList.push(child);
+                	obj.checkPointsList.push(child.children[0]);
+                	child.visible = false;
                 }
             }
         });
         // trawa.material.map.anisotropy =  renderer.getMaxAnisotropy();
         var checkPointMaterial = new THREE.MeshLambertMaterial( { side: THREE.DoubleSide, color: 0x0000ff, opacity: 0.1, transparent: true } );
         for(var i = obj.checkPointsList.length - 1; i >= 0; --i){
-            obj.checkPointsList[i].children[0].material = checkPointMaterial;
+            obj.checkPointsList[i].material = checkPointMaterial;
         };
         map.updateMatrix();
         scene.add(map);  
 	
 		var bb2 = new THREE.BoundingBoxHelper(obj.checkPointsList[1]);
 		bb2.update();
-		scene.add(bb2);
+		//scene.add(bb2);
     });	
     
     // this.checkPointsList.sort(function(a,b))
@@ -203,6 +204,8 @@ CAR.world = function(scene)
 		dirLight.position.z = position.z - 10;
 		dirLight.position.y = position.y + 10;
 		dirLight.target = car.dae;
+		
+		skybox.position.copy(car.position);
 		
 		var speed = car.carSpeed * 3600 / 1000;
 		var acc = car.carAcc / 9.8;
